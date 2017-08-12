@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"reflect"
 	"github.com/pborman/uuid"
+	"context"
+	"cloud.google.com/go/bigtable"
 )
 
 type Location struct {
@@ -100,6 +102,29 @@ func handlerPost(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Printf("Index saved: %s\n", p.Message)
 
+	ctx := context.Background()
+	// you must update project name here
+	bt_client, err := bigtable.NewClient(ctx, PROJECT_ID, BT_INSTANCE)
+	if err != nil {
+		panic(err)
+		return
+	}
+
+	// TODO (student questions) save Post into BT as well
+	tbl := bt_client.Open("post")
+	mut := bigtable.NewMutation()
+	t := bigtable.Now()
+	mut.Set("post", "user", t, []byte(p.User))
+	mut.Set("post", "message", t, []byte(p.Message))
+	mut.Set("localtion", "lat", t, []byte(strconv.FormatFloat(p.Location.Lat, 'f', -1, 64)))
+	mut.Set("localtion", "lon", t, []byte(strconv.FormatFloat(p.Location.Lat, 'f', -1, 64)))
+	err = tbl.Apply(ctx, "com.google.cloud", mut)
+	if err != nil {
+		panic(err)
+		return
+	}
+	fmt.Print("")
+
 }
 
 const (
@@ -107,8 +132,8 @@ const (
 	TYPE = "post"
 	DISTANCE = "200km"
 	// Needs to update
-	//PROJECT_ID = "around-xxx"
-	//BT_INSTANCE = "around-post"
+	PROJECT_ID = "supple-fold-176022"
+	BT_INSTANCE = "around-post"
 	// Needs to update this URL if you deploy it to cloud.
 	ES_URL = "http://54.212.196.164:9200"
 )
