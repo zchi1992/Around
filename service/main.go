@@ -61,7 +61,7 @@ func main() {
 	fmt.Println("started-service")
 	http.HandleFunc("/post", handlerPost)
 	http.HandleFunc("/search", handlerSearch)
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":8000", nil))
 }
 
 
@@ -123,7 +123,7 @@ func handlerPost(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 		return
 	}
-	fmt.Print("")
+	fmt.Printf("Post is saved to BigTable: %s\n", p.Message)
 
 }
 
