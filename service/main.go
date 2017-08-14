@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"reflect"
 	"github.com/pborman/uuid"
-	"context"
-	"cloud.google.com/go/bigtable"
+	// "context"
+	// "cloud.google.com/go/bigtable"
 )
 
 type Location struct {
@@ -50,8 +50,8 @@ func main() {
                                   }
                            }
                     }
-             }
-             `
+             	}
+            	 `
 		_, err := client.CreateIndex(INDEX).Body(mapping).Do()
 		if err != nil {
 			// Handle error
@@ -64,8 +64,6 @@ func main() {
 	log.Fatal(http.ListenAndServe(":8000", nil))
 }
 
-
-
 func handlerPost(w http.ResponseWriter, r *http.Request) {
 	// Parse from body of request to get a json object.
 	fmt.Println("Received one post request")
@@ -77,10 +75,8 @@ func handlerPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("Post received: %s\n", p.Message)
-
-	// Add a document to the index
-	client, err := elastic.NewClient(elastic.SetURL(ES_URL), elastic.SetSniff(false))
+	// Create a client
+	es_client, err := elastic.NewClient(elastic.SetURL(ES_URL), elastic.SetSniff(false))
 	if err != nil {
 		panic(err)
 		return
@@ -88,7 +84,8 @@ func handlerPost(w http.ResponseWriter, r *http.Request) {
 
 	id := uuid.New()
 
-	_, err = client.Index().
+	// Save it to index
+	_, err = es_client.Index().
 		Index(INDEX).
 		Type(TYPE).
 		Id(id).
@@ -96,38 +93,37 @@ func handlerPost(w http.ResponseWriter, r *http.Request) {
 		Refresh(true).
 		Do()
 	if err != nil {
-		// Handle error
-		panic(err)
-	}
-
-	fmt.Printf("Index saved: %s\n", p.Message)
-
-	ctx := context.Background()
-	// you must update project name here
-	bt_client, err := bigtable.NewClient(ctx, PROJECT_ID, BT_INSTANCE)
-	if err != nil {
 		panic(err)
 		return
 	}
 
+	fmt.Printf("Post is saved to Index: %s\n", p.Message)
 
-	// TODO (student questions) save Post into BT as well
-	tbl := bt_client.Open("post")
-	mut := bigtable.NewMutation()
-	t := bigtable.Now()
+	//ctx := context.Background()
+	//// you must update project name here
+	//bt_client, err := bigtable.NewClient(ctx, PROJECT_ID, BT_INSTANCE)
+	//if err != nil {
+	//	panic(err)
+	//	return
+	//}
 
-	mut.Set("post", "user", t, []byte(p.User))
-	mut.Set("post", "message", t, []byte(p.Message))
-	mut.Set("location", "lat", t, []byte(strconv.FormatFloat(p.Location.Lat, 'f', -1, 64)))
-	mut.Set("location", "lon", t, []byte(strconv.FormatFloat(p.Location.Lon, 'f', -1, 64)))
 
-	err = tbl.Apply(ctx, id, mut)
-	if err != nil {
-		panic(err)
-		return
-	}
-	fmt.Printf("Post is saved to BigTable: %s\n", p.Message)
-
+	//// TODO (student questions) save Post into BT as well
+	//tbl := bt_client.Open("post")
+	//mut := bigtable.NewMutation()
+	//t := bigtable.Now()
+	//
+	//mut.Set("post", "user", t, []byte(p.User))
+	//mut.Set("post", "message", t, []byte(p.Message))
+	//mut.Set("location", "lat", t, []byte(strconv.FormatFloat(p.Location.Lat, 'f', -1, 64)))
+	//mut.Set("location", "lon", t, []byte(strconv.FormatFloat(p.Location.Lon, 'f', -1, 64)))
+	//
+	//err = tbl.Apply(ctx, id, mut)
+	//if err != nil {
+	//	panic(err)
+	//	return
+	//}
+	//fmt.Printf("Post is saved to BigTable: %s\n", p.Message)
 
 }
 
@@ -139,9 +135,8 @@ const (
 	PROJECT_ID = "supple-fold-176022"
 	BT_INSTANCE = "around-post"
 	// Needs to update this URL if you deploy it to cloud.
-	ES_URL = "http://54.187.181.20:9200"
+	ES_URL = "http://54.212.196.164:9200"
 )
-
 
 func handlerSearch(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Received one request for search")
@@ -197,6 +192,7 @@ func handlerSearch(w http.ResponseWriter, r *http.Request) {
 		ps = append(ps, p)
 
 	}
+
 	js, err := json.Marshal(ps)
 	if err != nil {
 		panic(err)
